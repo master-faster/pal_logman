@@ -15,7 +15,7 @@ function End-Script {
 # Show Info
 Start-Sleep 1
 Write-Warning -Message "This script is provided as is as a courtesy for automated collection of PerfMon counters.
-There is no support provided for this script; if it fails, we ask that you please proceed to configure settings manually as instructed by your Support Engineer."
+There is no support provided for this script. `nIf it fails, please proceed to run collection manually as instructed by your Support Engineer."
 
 # Checking elevation rights
 Start-Sleep 1
@@ -23,16 +23,16 @@ Write-Host "`nChecking elevation rights"
 Start-Sleep 1
 if (!(New-Object Security.Principal.WindowsPrincipal([Security.Principal.WindowsIdentity]::GetCurrent())).IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator))
 {
-  Write-Host -ForegroundColor Yellow "You're running PowerShell without elevated rights. Please open a PowerShell window as an Administrator. Shell will close in 10 seconds automatically."
-  Start-Sleep 10
-  Exit
+  Write-Host -ForegroundColor Yellow "You're running PowerShell without elevated rights. Please open a PowerShell window as an Administrator. `nScript will be stopped in 5 seconds automatically."
+  Start-Sleep 5
+  Break
 }
 else {Write-Host -ForegroundColor Green "You're running PowerShell as an Administrator."}
 
 # Variables
 $rootlogpath = "C:\temp\"
 $countname = "$env:COMPUTERNAME-Perf-Counter-Log"
-$fulllogpath = $rootlogpath + $countname + (Get-Date -Format "-MMddyyyy_HHmmss").ToString()
+$fulllogpath = $rootlogpath + $countname
 $duration = "00:01:00"
 $interval = "00:00:01"
 $timespan = [System.TimeSpan]::Parse($duration)
@@ -52,23 +52,29 @@ logman.exe create counter $countname -cnf 0 -f bincirc -v mmddhhmm -max 250 -o $
 Start-Sleep 1
 if (logman.exe start $countname){
     $starttime = (Get-Date -Format "MM.dd.yyyy HH:mm:ss").ToString()
-	Write-Host -ForegroundColor Yellow "Started(MM.dd.yyyy HH:mm:ss): $starttime, duration(HH:mm:ss): $duration."
+	Write-Host -ForegroundColor Yellow "Started: $starttime, duration HH:mm:ss: $duration."
 }
 
 
-# Start-Sleep for the 'duration' time, then check status and attempt to force stop
+# Start-Sleep for the 'duration' time
 Start-Sleep -Seconds ([int]([System.Math]::Round($TimeSpan.TotalSeconds,0)))
+
+# Check collection status, if still running - attempt a force stop
 Start-Sleep 1
 $status = logman.exe query $countname
 if ($status.Item(2).ToString() | select-string "Running") {
-    Write-Host -ForegroundColor Yellow "Collection is still running, forcing stop"
+    Write-Host -ForegroundColor Yellow `
+    "Collection is still running, forcing stop..."
 	logman.exe stop $countname
 }
 elseif ($status.Item(2).ToString() | select-string "Stopped") {
-	Write-Host -ForegroundColor Green "Collection has been stopped, preparing capture file..."
+	Write-Host -ForegroundColor Green `
+    "Collection has been stopped, preparing capture file..."
 }
 else {
-    Write-Host -ForegroundColor Red "Unexpected result, please re-run 'logman.exe query' command to check data collection "
+    Write-Host -ForegroundColor Red `
+    "Unexpected result, please re-run 'logman.exe query' command to check data collection status."
+    Break
 }
 
 # Remove the data collection counter
